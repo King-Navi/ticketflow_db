@@ -88,6 +88,12 @@ CREATE TABLE seat (
     updated_at  timestamptz  NOT NULL DEFAULT now()
 );
 
+CREATE UNIQUE INDEX uq_seat_in_section_ci
+  ON seat (section_id, lower(btrim(row_no)), lower(btrim(seat_no)));
+
+CREATE UNIQUE INDEX uq_section_in_location_ci
+  ON section (event_location_id, lower(btrim(section_name)));
+
 -- ============================
 -- 4. Event / Inventory per event
 -- ============================
