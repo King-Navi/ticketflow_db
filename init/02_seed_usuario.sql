@@ -134,3 +134,9 @@ INSERT INTO refund_status (status_name) VALUES
 ('approved'),
 ('processed'),
 ('rejected');
+
+INSERT INTO event_image_type (code, description)
+VALUES
+  ('cover',  'Main cover image'),
+  ('banner', 'Wide banner image'),
+  ('gallery','Gallery image');

@@ -114,6 +114,33 @@ CREATE TABLE event (
     updated_at         timestamptz  NOT NULL DEFAULT now(),
     CHECK (end_time IS NULL OR end_time > start_time)
 );
+CREATE TABLE event_image_type (
+    event_image_type_id  serial PRIMARY KEY,
+    code                 varchar(50) NOT NULL UNIQUE, -- 'cover','banner','gallery'
+    description          varchar(150),
+    created_at           timestamptz NOT NULL DEFAULT now(),
+    updated_at           timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE TABLE event_image (
+    event_image_id       serial PRIMARY KEY,
+    event_id             integer NOT NULL
+        REFERENCES event (event_id),
+    event_image_type_id  integer NOT NULL
+        REFERENCES event_image_type (event_image_type_id),
+    image_path           varchar(300) NOT NULL,
+    alt_text             varchar(200),
+    sort_order           integer,
+    created_at           timestamptz NOT NULL DEFAULT now(),
+    updated_at           timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_event_image_event_id
+    ON event_image (event_id);
+
+CREATE INDEX idx_event_image_type_id
+    ON event_image (event_image_type_id);
+
 
 -- Catálogo: estado de un asiento en el contexto de un evento
 -- e.g. 'available','reserved','sold','blocked'
