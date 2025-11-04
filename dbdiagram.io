@@ -1,42 +1,37 @@
 Table Credential {
   idCredential int [pk, increment]
+  email varchar(100) [not null]
   nickname varchar(100) [not null, unique]
   passwordHash varchar(255) [not null]
-  role varchar(50) [not null]
-}
-
-Table Attendee {
-  idAttendee int [pk, increment]
-  email varchar(100) [not null]
-  firstName varchar(100) [not null]
-  lastName varchar(100) [not null]
-  middleName varchar(100)
   isActive BOOLEAN
   isEmailVerified BOOLEAN 
   createdAt TIMESTAMP
   updatedAt TIMESTAMP
   lastLogin TIMESTAMP
+  role varchar(50) [not null]
+}
+
+Table Attendee {
+  idAttendee int [pk, increment]
+  firstName varchar(100) [not null]
+  lastName varchar(100) [not null]
+  middleName varchar(100)
   idCredential int [not null]
 }
 
 Table Organizer {
   idOrganizer int [pk, increment]
-  email varchar(100) [not null]
   firstName varchar(100) [not null]
   lastName varchar(100) [not null]
   middleName varchar(100)
-  createdAt TIMESTAMP
-  updatedAt TIMESTAMP
-  lastLogin TIMESTAMP
-  isActive BOOLEAN
   idCompany int
   idCredential int [not null]
 }
 
 Table Reservation {
   idReservation int [pk, increment]
-  expiration TIMESTAMP [not null]
-  startDate TIMESTAMP [not null]
+  expirationAt TIMESTAMP [not null]
+  createdAt TIMESTAMP [not null]
   idAttendee int [not null]
   idEventSeat int [not null]
 }
@@ -54,7 +49,7 @@ Table Card {
   cardNumber varchar(100) [not null]
   idPaymentMethod int [not null]
 }
-Table Cryto {
+Table Crypto {
   idCrypto int [pk, increment]
   idPaymentMethod int [not null]
   hash varchar(300) [not null]
@@ -62,7 +57,7 @@ Table Cryto {
 
 Table Payment {
   idPayment int [pk, increment]
-  purchaseDate DATE [not null]
+  purchaseAt TIMESTAMP [not null]
   taxPercentage int [not null]
   ticketQuantity int [not null]
   idPaymentMethod int [not null]
@@ -72,8 +67,9 @@ Table Payment {
 Table Refund {
   idRefund int [pk, increment]
   refundDate TIMESTAMP [not null]
-  reason varchar(100) [not null]
-  idTicket int [unique]
+  reason varchar(500) [not null]
+  refundAmount decimal(10,2)
+  idTicket int [not null, unique]
   idRefundStatus int [not null]
 }
 
@@ -86,10 +82,12 @@ Table Ticket {
   idTicket int [pk, increment]
   categoryLabel varchar(100) [not null]
   seatLabel varchar(100) [not null]
-  unitPrice int [not null]
+  unitPrice decimal(10,2) [not null]
+  checkedInAt timestamp
   qrCode binary [not null]
   idPayment int [not null]
   idTicketStatus int [not null]
+  idEventSeat int [not null]
 }
 Table TicketStatus{
   idTicketStatus int [pk, increment]
@@ -125,24 +123,49 @@ Table Seat {
 
 Table EventSeat {
   idEventSeat int [pk, increment]
-  idEvent int [not null, unique]
-  idSeat int [not null, unique]
+  idEvent int [not null]
+  idSeat int [not null]
   basePrice decimal(10,2) [not null]
-  isBlocked boolean [not null, default: false]
-  idTicket int [null]
+  idEventSeatStatus int [not null]
 }
-
+Table EventSeatStatus{
+  idEventSeatStatus int [pk, increment]
+  eventSeatStatusName varchar(100)
+}
 
 Table Event {
   idEvent int [pk, increment]
   category varchar(100) [not null]
   description varchar(500) [not null]
-  date DATE [not null]
-  startTime timestamp [not null]
-  endTime timestamp  [not null]
-  name varchar(100) [not null]
+  eventDate DATE [not null]
+  startTime TIME [not null]
+  endTime TIME  [not null]
+  eventName varchar(100) [not null]
   idCompany int [not null]
+  idEventLocation int [not null]
 }
+Table EventStatus {
+  idEventStatus int [pk, increment]
+}
+
+Table EventImage {
+  idEventImage      int [pk, increment]
+  idEvent           int [not null]
+  idEventImageType  int [not null]
+  imagePath         varchar(300) [not null]
+  sortOrder         int
+  createdAt         timestamp
+  updatedAt         timestamp
+}
+
+Table EventImageType {
+  idEventImageType int [pk, increment]
+  code             varchar(50) [not null, unique]
+  description      varchar(150)
+  createdAt        timestamp
+  updatedAt        timestamp
+}
+
 
 Table Company {
   idCompany int [pk, increment]
@@ -166,6 +189,10 @@ Ref: "Credential"."idCredential" - "Organizer"."idCredential"
 
 Ref: "Seat"."idSection" > "Section"."idSection"
 
+
+
+
+
 Ref: "EventLocation"."idEventLocation" < "Section"."idEventLocation"
 
 
@@ -174,9 +201,19 @@ Ref: "TicketStatus"."idTicketStatus" < "Ticket"."idTicketStatus"
 Ref: "RefundStatus"."idRefundStatus" < "Refund"."idRefundStatus"
 
 
+
+
+
+
+
+
+
+
+
+
 Ref: "Card"."idPaymentMethod" - "PaymentMethod"."idPaymentMethod"
 
-Ref: "PaymentMethod"."idPaymentMethod" - "Cryto"."idPaymentMethod"
+Ref: "PaymentMethod"."idPaymentMethod" - "Crypto"."idPaymentMethod"
 
 Ref: "EventSeat"."idEvent" > "Event"."idEvent"
 
@@ -185,4 +222,14 @@ Ref: "EventSeat"."idSeat" > "Seat"."idSeat"
 
 Ref: "Reservation"."idEventSeat" > "EventSeat"."idEventSeat"
 
-Ref: "Ticket"."idTicket" - "EventSeat"."idTicket"
+
+
+Ref: "Ticket"."idEventSeat" > "EventSeat"."idEventSeat"
+
+Ref: "Event"."idEventLocation" > "EventLocation"."idEventLocation"
+
+Ref: "EventSeatStatus"."idEventSeatStatus" < "EventSeat"."idEventSeatStatus"
+
+Ref: "EventImage"."idEvent" > "Event"."idEvent"
+
+Ref: "EventImageType"."idEventImageType" < "EventImage"."idEventImageType"
