@@ -16,6 +16,40 @@ CREATE TABLE credential (
     last_login             timestamptz
 );
 
+CREATE TABLE password_reset_token (
+  password_reset_token_id  integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  credential_id            integer      NOT NULL
+      REFERENCES credential (credential_id) ON DELETE CASCADE,
+  token_hash               varchar(64)  NOT NULL,
+  expires_at               timestamptz  NOT NULL,
+  used_at                  timestamptz,
+  created_ip               inet,
+  created_ua               varchar(300),
+  created_at               timestamptz  NOT NULL DEFAULT now(),
+  updated_at               timestamptz  NOT NULL DEFAULT now()
+);
+
+CREATE UNIQUE INDEX uq_password_reset_token_hash
+  ON password_reset_token (token_hash);
+
+CREATE INDEX idx_password_reset_token_credential_active
+  ON password_reset_token (credential_id, expires_at)
+  WHERE used_at IS NULL;
+
+CREATE OR REPLACE FUNCTION set_updated_at()
+RETURNS trigger AS $$
+BEGIN
+  NEW.updated_at := now();
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_password_reset_token_updated_at
+BEFORE UPDATE ON password_reset_token
+FOR EACH ROW
+EXECUTE FUNCTION set_updated_at();
+
+
 -- ============================
 -- 2. Company / Organizer / Attendee
 -- ============================
@@ -97,6 +131,31 @@ CREATE UNIQUE INDEX uq_section_in_location_ci
 -- ============================
 -- 4. Event / Inventory per event
 -- ============================
+CREATE TABLE event_status (
+  event_status_id  integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  code             varchar(50)  NOT NULL UNIQUE,
+  description      varchar(150),
+  sort_order       integer      NOT NULL DEFAULT 0,
+  is_active        boolean      NOT NULL DEFAULT TRUE,
+  created_at       timestamptz  NOT NULL DEFAULT now(),
+  updated_at       timestamptz  NOT NULL DEFAULT now(),
+  CONSTRAINT uq_event_status_code_ci UNIQUE (code)
+);
+
+ALTER TABLE event_status
+  ADD CONSTRAINT chk_event_status_code_lower
+  CHECK (code = lower(code));
+
+INSERT INTO event_status (code, description, sort_order) VALUES
+  ('draft',     'Draft (not visible / no sales)',            10),
+  ('scheduled', 'Scheduled (pre-sale window, optional)',     20),
+  ('on_sale',   'Open for reservations and sales',           30),
+  ('paused',    'Temporarily paused',                        40),
+  ('edit_lock', 'Edit mode: sales/reservations blocked',     50),
+  ('closed',    'Sales closed (pre-event)',                  60),
+  ('completed', 'Event finished',                            70),
+  ('canceled',  'Event canceled',                            80);
+
 
 CREATE TABLE event (
     event_id           integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -110,10 +169,36 @@ CREATE TABLE event (
         REFERENCES company (company_id),
     event_location_id  integer      NOT NULL
         REFERENCES event_location (event_location_id),
+    event_status_id integer NOT NULL
+        REFERENCES event_status(event_status_id),
     created_at         timestamptz  NOT NULL DEFAULT now(),
     updated_at         timestamptz  NOT NULL DEFAULT now(),
     CHECK (end_time IS NULL OR end_time > start_time)
+        
 );
+
+CREATE INDEX idx_event_event_status_id ON event(event_status_id);
+
+-- Trigger for 'draft' if event_status_id is null
+
+CREATE OR REPLACE FUNCTION set_default_event_status()
+RETURNS trigger AS $$
+BEGIN
+  IF NEW.event_status_id IS NULL THEN
+    SELECT event_status_id
+      INTO NEW.event_status_id
+      FROM event_status
+     WHERE code = 'draft';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+CREATE TRIGGER trg_event_default_status
+BEFORE INSERT ON event
+FOR EACH ROW
+EXECUTE FUNCTION set_default_event_status();
+
 CREATE TABLE event_image_type (
     event_image_type_id  serial PRIMARY KEY,
     code                 varchar(50) NOT NULL UNIQUE, -- 'cover','banner','gallery'
@@ -140,6 +225,7 @@ CREATE INDEX idx_event_image_event_id
 
 CREATE INDEX idx_event_image_type_id
     ON event_image (event_image_type_id);
+
 
 
 -- Catálogo: estado de un asiento en el contexto de un evento

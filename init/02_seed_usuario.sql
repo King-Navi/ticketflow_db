@@ -55,7 +55,9 @@ COMMIT;
 
 
 INSERT INTO company (company_name, tax_id)
-VALUES ('Eventia Productions', 'EVP-980624-5R2');
+VALUES 
+('Eventia Productions', 'EVP-980624-5R2'), 
+('Christian company', 'SAAT-CEPE13');
 
 INSERT INTO credential (
     email,
@@ -85,7 +87,15 @@ VALUES (
     '$2a$12$ExTBlqCQV17Rq1CFjB1O9OMkZQUANE5cbEtivSo9y9u2HmxVrwqhW',
     'organizer',
     TRUE,
-    FALSE)
+    FALSE
+),
+('chris@example.com',
+    'chris',
+    '$2a$12$MkyTUDIormRibYauVt.4He4ZyNIOl9C5Ay90Btf88VJMU5GYOZ6PW',
+    'organizer',
+    TRUE,
+    FALSE
+)
 ;
 
 INSERT INTO attendee (
@@ -113,6 +123,13 @@ INSERT INTO organizer (
   NULL,
   1,
   3
+),
+(
+  'Chris',
+  'Super',
+  NULL,
+  2,
+  4
 );
 
 INSERT INTO event_seat_status (status_name) VALUES
@@ -140,3 +157,5 @@ VALUES
   ('cover',  'Main cover image'),
   ('banner', 'Wide banner image'),
   ('gallery','Gallery image');
+
+  
