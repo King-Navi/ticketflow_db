@@ -53,6 +53,80 @@ RETURNING seat_id;
 COMMIT;
 
 
+BEGIN;
+
+WITH new_loc AS (
+  INSERT INTO event_location (
+    venue_name, address_line1, address_line2,
+    city, state, country, postal_code, capacity,
+    created_at, updated_at
+  )
+  VALUES (
+    'Auditorio Reforma',
+    'Calz. de la Reforma 456',
+    NULL,
+    'Ciudad de México',
+    'CDMX',
+    'MX',
+    '06100',
+    1500,
+    NOW(), NOW()
+  )
+  RETURNING event_location_id
+),
+
+sec_vip AS (
+  INSERT INTO section (section_name, event_location_id, created_at, updated_at)
+  SELECT 'VIP', event_location_id, NOW(), NOW()
+  FROM new_loc
+  RETURNING section_id
+),
+
+sec_general AS (
+  INSERT INTO section (section_name, event_location_id, created_at, updated_at)
+  SELECT 'General', event_location_id, NOW(), NOW()
+  FROM new_loc
+  RETURNING section_id
+),
+
+sec_balcony AS (
+  INSERT INTO section (section_name, event_location_id, created_at, updated_at)
+  SELECT 'Balcony', event_location_id, NOW(), NOW()
+  FROM new_loc
+  RETURNING section_id
+)
+
+INSERT INTO seat (seat_no, row_no, section_id, created_at, updated_at)
+SELECT seat_no, row_no, section_id, NOW(), NOW()
+FROM (
+  SELECT to_char(n, 'FM999') AS seat_no,
+         r.row_no,
+         (SELECT section_id FROM sec_vip) AS section_id
+  FROM generate_series(1, 12) AS g(n)
+  CROSS JOIN (VALUES ('A'), ('B')) AS r(row_no)
+
+  UNION ALL
+
+  SELECT to_char(n, 'FM999') AS seat_no,
+         r.row_no,
+         (SELECT section_id FROM sec_general) AS section_id
+  FROM generate_series(1, 20) AS g(n)
+  CROSS JOIN (VALUES ('A'), ('B'), ('C'), ('D'), ('E')) AS r(row_no)
+
+  UNION ALL
+
+  SELECT to_char(n, 'FM999') AS seat_no,
+         r.row_no,
+         (SELECT section_id FROM sec_balcony) AS section_id
+  FROM generate_series(1, 15) AS g(n)
+  CROSS JOIN (VALUES ('BA'), ('BB')) AS r(row_no)
+) s
+RETURNING seat_id;
+
+COMMIT;
+
+
+
 
 INSERT INTO company (company_name, tax_id)
 VALUES 
@@ -70,21 +144,21 @@ INSERT INTO credential (
 VALUES (
     'user@example.com',
     'user',
-    '$2a$12$ExTBlqCQV17Rq1CFjB1O9OMkZQUANE5cbEtivSo9y9u2HmxVrwqhW',
+    '$2a$12$r5MNgjPdF/Abwnq.LGgG/eMWBB19DYfSkmPHPfANIe7xLUwP14Cna',
     'attendee',
     TRUE,
     FALSE
 ),
 ('user2@example.com',
     'user_admin',
-    '$2a$12$ExTBlqCQV17Rq1CFjB1O9OMkZQUANE5cbEtivSo9y9u2HmxVrwqhW',
+    '$2a$12$r5MNgjPdF/Abwnq.LGgG/eMWBB19DYfSkmPHPfANIe7xLUwP14Cna',
     'admin',
     TRUE,
     FALSE
 ),
 ('user3@example.com',
     'user_organizer',
-    '$2a$12$ExTBlqCQV17Rq1CFjB1O9OMkZQUANE5cbEtivSo9y9u2HmxVrwqhW',
+    '$2a$12$r5MNgjPdF/Abwnq.LGgG/eMWBB19DYfSkmPHPfANIe7xLUwP14Cna',
     'organizer',
     TRUE,
     FALSE
