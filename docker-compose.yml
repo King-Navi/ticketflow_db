@@ -12,14 +12,14 @@ services:
         - ./init:/docker-entrypoint-initdb.d:ro
     ports:
       - 5555:5432
-  stripe-listener:
-    image: stripe/stripe-cli:latest
-    command: [
-      "listen",
-      "--api-key", "${STRIPE_SECRET_KEY}",
-      "--forward-to", "host.docker.internal:6970/v1/stripe/webhooks/stripe"
-    ]
-    extra_hosts:
-      - "host.docker.internal:host-gateway"
-    env_file:
-      - .env
+  # stripe-listener:
+  #   image: stripe/stripe-cli:latest
+  #   command: [
+  #     "listen",
+  #     "--api-key", "${STRIPE_SECRET_KEY}",
+  #     "--forward-to", "host.docker.internal:6970/v1/stripe/webhooks/stripe"
+  #   ]
+  #   extra_hosts:
+  #     - "host.docker.internal:host-gateway"
+  #   env_file:
+  #     - .env

@@ -343,12 +343,8 @@ CREATE TABLE payment (
     tax_amount         numeric(10,2) NOT NULL,
     total_amount       numeric(10,2) NOT NULL,
     ticket_quantity    integer       NOT NULL CHECK (ticket_quantity > 0),
-    attendee_id        integer       NOT NULL
-        REFERENCES attendee (attendee_id),
     payment_method_id  integer       NOT NULL
         REFERENCES payment_method (payment_method_id),
-    reservation_id     integer
-        REFERENCES reservation (reservation_id),
     created_at         timestamptz   NOT NULL DEFAULT now(),
     updated_at         timestamptz   NOT NULL DEFAULT now()
 );
@@ -503,14 +499,8 @@ CREATE INDEX idx_reservation_attendee_id
 CREATE INDEX idx_reservation_event_seat_id
     ON reservation (event_seat_id);
 
-CREATE INDEX idx_payment_attendee_id
-    ON payment (attendee_id);
-
 CREATE INDEX idx_payment_payment_method_id
     ON payment (payment_method_id);
-
-CREATE INDEX idx_payment_reservation_id
-    ON payment (reservation_id);
 
 CREATE INDEX idx_ticket_payment_id
     ON ticket (payment_id);
