@@ -206,30 +206,58 @@ INSERT INTO organizer (
   4
 );
 
-INSERT INTO event_seat_status (status_name) VALUES
-('available'),
-('reserved'),
-('sold'),
-('blocked');
 
+BEGIN;
 
-INSERT INTO ticket_status (status_name) VALUES
-('sold'),
-('checked_in'),
-('refunded'),
-('canceled');
+WITH target_attendee AS (
+  SELECT a.attendee_id
+  FROM attendee a
+  JOIN credential c ON c.credential_id = a.credential_id
+  WHERE c.email = 'user@example.com'
+  LIMIT 1
+), pm AS (
+  -- Create a payment method for that attendee
+  INSERT INTO payment_method (attendee_id)
+  SELECT attendee_id FROM target_attendee
+  RETURNING payment_method_id, attendee_id
+), card_ins AS (
+  -- Attach a tokenized card to that payment method
+  INSERT INTO card (
+    payment_method_id, card_token, card_brand, last4, exp_month, exp_year
+  )
+  SELECT
+    payment_method_id,
+    'tok_test_visa_4242',  -- fake PSP token for testing
+    'visa',
+    '4242',
+    12,
+    (EXTRACT(YEAR FROM now())::int + 3)  -- valid for a few years
+  FROM pm
+  RETURNING card_id, payment_method_id
+), pay AS (
+  -- Create a payment snapshot (no reservation_id needed)
+  INSERT INTO payment (
+    purchase_at,
+    subtotal, tax_percentage, tax_amount, total_amount,
+    ticket_quantity,
+    attendee_id, payment_method_id
+  )
+  SELECT
+    now(),
+    100.00,               -- subtotal
+    16.00,                -- VAT %
+    ROUND(100.00 * 0.16, 2) AS tax_amount,
+    ROUND(100.00 + (100.00 * 0.16), 2) AS total_amount,
+    2,                    -- e.g., buying 2 tickets
+    pm.attendee_id,
+    pm.payment_method_id
+  FROM pm
+  RETURNING payment_id
+)
+SELECT
+  (SELECT attendee_id FROM pm)            AS attendee_id,
+  (SELECT payment_method_id FROM pm)      AS payment_method_id,
+  (SELECT card_id FROM card_ins)          AS card_id,
+  (SELECT payment_id FROM pay)            AS payment_id;
 
-
-INSERT INTO refund_status (status_name) VALUES
-('requested'),
-('approved'),
-('processed'),
-('rejected');
-
-INSERT INTO event_image_type (code, description)
-VALUES
-  ('cover',  'Main cover image'),
-  ('banner', 'Wide banner image'),
-  ('gallery','Gallery image');
-
-  
+COMMIT;

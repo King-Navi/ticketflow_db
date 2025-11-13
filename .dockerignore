@@ -1,0 +1,8 @@
+# Ignore common development files and directories
+.git
+.gitignore
+help.sql
+.env
+buildPush.sh
+dbdiagram.io
+README.md

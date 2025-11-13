@@ -1,3 +1,6 @@
+-- Required for UUID generation (used by QR tokens)
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
 -- ============================
 -- 1. Auth / Accounts
 -- ============================
@@ -157,6 +160,8 @@ INSERT INTO event_status (code, description, sort_order) VALUES
   ('canceled',  'Event canceled',                            80);
 
 
+
+
 CREATE TABLE event (
     event_id           integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     event_name         varchar(150) NOT NULL,
@@ -207,6 +212,12 @@ CREATE TABLE event_image_type (
     updated_at           timestamptz NOT NULL DEFAULT now()
 );
 
+INSERT INTO event_image_type (code, description)
+VALUES
+  ('cover',  'Main cover image'),
+  ('banner', 'Wide banner image'),
+  ('gallery','Gallery image');
+
 CREATE TABLE event_image (
     event_image_id       serial PRIMARY KEY,
     event_id             integer NOT NULL
@@ -237,6 +248,13 @@ CREATE TABLE event_seat_status (
     updated_at            timestamptz NOT NULL DEFAULT now()
 );
 
+INSERT INTO event_seat_status (status_name) VALUES
+('available'),
+('reserved'),
+('sold'),
+('blocked');
+
+
 -- Inventario: asiento físico mapeado a un evento específico
 CREATE TABLE event_seat (
     event_seat_id         integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -251,6 +269,9 @@ CREATE TABLE event_seat (
     updated_at            timestamptz   NOT NULL DEFAULT now(),
     UNIQUE (event_id, seat_id)
 );
+
+
+
 
 -- ============================
 -- 5. Reservation (pre-sale hold)
@@ -341,15 +362,20 @@ CREATE TABLE ticket_status (
     status_name       varchar(100) NOT NULL UNIQUE,
     created_at        timestamptz  NOT NULL DEFAULT now(),
     updated_at        timestamptz  NOT NULL DEFAULT now()
-    -- ej: 'sold','checked_in','refunded','canceled'
 );
+
+INSERT INTO ticket_status (status_name) VALUES
+('sold'),
+('checked_in'),
+('refunded'),
+('canceled');
+
 
 CREATE TABLE ticket (
     ticket_id         integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     category_label    varchar(100) NOT NULL,     -- ej "VIP", "Balcony"
     seat_label        varchar(100) NOT NULL,     -- ej "Row B Seat 12"
     unit_price        numeric(10,2) NOT NULL,    -- precio pagado por este boleto
-    qr_code           bytea        NOT NULL,
     checked_in_at     timestamptz,
     payment_id        integer      NOT NULL
         REFERENCES payment (payment_id),
@@ -360,6 +386,51 @@ CREATE TABLE ticket (
     created_at        timestamptz  NOT NULL DEFAULT now(),
     updated_at        timestamptz  NOT NULL DEFAULT now()
 );
+
+CREATE TABLE ticket_qr (
+    ticket_qr_id   integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    ticket_id      integer NOT NULL
+        REFERENCES ticket (ticket_id) ON DELETE CASCADE,
+    token          uuid    NOT NULL UNIQUE DEFAULT gen_random_uuid(),-- payload carried in the QR
+    updated_at        timestamptz  NOT NULL DEFAULT now(),
+    created_at     timestamptz NOT NULL DEFAULT now()  
+);
+
+CREATE UNIQUE INDEX uq_ticket_qr_one_per_ticket
+  ON ticket_qr (ticket_id);
+
+CREATE INDEX idx_ticket_qr_token ON ticket_qr (token);
+
+CREATE TABLE check_in_status (
+    check_in_status_id smallint PRIMARY KEY,
+    status_name        varchar(50) NOT NULL UNIQUE,
+    created_at         timestamptz NOT NULL DEFAULT now(),
+    updated_at         timestamptz NOT NULL DEFAULT now()
+    -- values: 1=ok, 2=duplicate, 3=invalid, 4=outside_window
+);
+
+INSERT INTO check_in_status (check_in_status_id, status_name) VALUES
+(1,'ok'),
+(2,'duplicate'),
+(3,'invalid'),
+(4,'outside_window');
+
+
+CREATE TABLE ticket_check_in (
+    ticket_check_in_id integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    ticket_qr_id       integer NOT NULL
+        REFERENCES ticket_qr (ticket_qr_id) ON DELETE RESTRICT,
+    check_in_status_id smallint NOT NULL
+        REFERENCES check_in_status (check_in_status_id),
+    scanned_at         timestamptz NOT NULL DEFAULT now(),
+    scanner_id         integer,
+    created_at         timestamptz NOT NULL DEFAULT now(),
+    updated_at         timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX idx_check_in_qr_id ON ticket_check_in (ticket_qr_id);
+CREATE INDEX idx_check_in_status_id ON ticket_check_in (check_in_status_id);
+CREATE INDEX idx_check_in_scanned ON ticket_check_in (scanned_at);
 
 -- ============================
 -- 9. Refunds
@@ -372,6 +443,12 @@ CREATE TABLE refund_status (
     updated_at        timestamptz  NOT NULL DEFAULT now()
     -- ej: 'requested','approved','processed','rejected'
 );
+
+INSERT INTO refund_status (status_name) VALUES
+('requested'),
+('approved'),
+('processed'),
+('rejected');
 
 CREATE TABLE refund (
     refund_id         integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
