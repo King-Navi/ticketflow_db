@@ -336,19 +336,25 @@ CREATE TABLE crypto_payment (
 -- Guardamos snapshot de montos para auditoría fiscal
 
 CREATE TABLE payment (
-    payment_id         integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    purchase_at        timestamptz  NOT NULL DEFAULT now(),
-    subtotal           numeric(10,2) NOT NULL,
-    tax_percentage     numeric(5,2)  NOT NULL,
-    tax_amount         numeric(10,2) NOT NULL,
-    total_amount       numeric(10,2) NOT NULL,
-    ticket_quantity    integer       NOT NULL CHECK (ticket_quantity > 0),
-    payment_method_id  integer       NOT NULL
-        REFERENCES payment_method (payment_method_id),
-    created_at         timestamptz   NOT NULL DEFAULT now(),
-    updated_at         timestamptz   NOT NULL DEFAULT now()
+    payment_id              integer GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    purchase_at             timestamptz  NOT NULL DEFAULT now(),
+    subtotal                numeric(10,2) NOT NULL,
+    tax_percentage          numeric(5,2)  NOT NULL,
+    tax_amount              numeric(10,2) NOT NULL,
+    total_amount            numeric(10,2) NOT NULL,
+    ticket_quantity         integer       NOT NULL CHECK (ticket_quantity > 0),
+    attendee_id             integer       NOT NULL
+        REFERENCES attendee (attendee_id),
+    stripe_payment_intent_id varchar(255) NOT NULL UNIQUE,
+    created_at              timestamptz   NOT NULL DEFAULT now(),
+    updated_at              timestamptz   NOT NULL DEFAULT now()
 );
 
+CREATE UNIQUE INDEX uq_payment_stripe_pi
+    ON payment (stripe_payment_intent_id);
+
+CREATE INDEX idx_payment_attendee_id
+    ON payment (attendee_id);
 -- ============================
 -- 8. Tickets
 -- ============================
@@ -499,8 +505,6 @@ CREATE INDEX idx_reservation_attendee_id
 CREATE INDEX idx_reservation_event_seat_id
     ON reservation (event_seat_id);
 
-CREATE INDEX idx_payment_payment_method_id
-    ON payment (payment_method_id);
 
 CREATE INDEX idx_ticket_payment_id
     ON ticket (payment_id);

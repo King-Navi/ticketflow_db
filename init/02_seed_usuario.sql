@@ -240,7 +240,8 @@ WITH target_attendee AS (
     purchase_at,
     subtotal, tax_percentage, tax_amount, total_amount,
     ticket_quantity,
-    attendee_id, payment_method_id
+    attendee_id,
+    stripe_payment_intent_id
   )
   SELECT
     now(),
@@ -248,9 +249,9 @@ WITH target_attendee AS (
     16.00,                -- VAT %
     ROUND(100.00 * 0.16, 2) AS tax_amount,
     ROUND(100.00 + (100.00 * 0.16), 2) AS total_amount,
-    2,                    -- e.g., buying 2 tickets
+    2, -- buying 2 tickets
     pm.attendee_id,
-    pm.payment_method_id
+    'seed_pi_1'           --cualquier valor de prueba
   FROM pm
   RETURNING payment_id
 )
