@@ -103,7 +103,12 @@ CREATE TABLE event_location (
     postal_code        varchar(20),
     capacity           integer,
     created_at         timestamptz  NOT NULL DEFAULT now(),
-    updated_at         timestamptz  NOT NULL DEFAULT now()
+    updated_at         timestamptz  NOT NULL DEFAULT now(),
+    
+    --     CHECK (end_time IS NULL OR end_time > start_time),
+    is_refundable      boolean NOT NULL DEFAULT TRUE,
+    refundable_until   timestamptz,         -- last moment when refunds are allowed
+    refund_policy_code varchar(50) 
 );
 
 CREATE TABLE section (
@@ -383,8 +388,8 @@ CREATE TABLE ticket (
         REFERENCES payment (payment_id),
     ticket_status_id  integer      NOT NULL
         REFERENCES ticket_status (ticket_status_id),
-    event_seat_id     integer      NOT NULL UNIQUE
-        REFERENCES event_seat (event_seat_id),
+    event_seat_id     integer      NOT NULL
+        REFERENCES event_seat (event_seat_id), -- Not unique for double refund 
     created_at        timestamptz  NOT NULL DEFAULT now(),
     updated_at        timestamptz  NOT NULL DEFAULT now()
 );
@@ -461,9 +466,19 @@ CREATE TABLE refund (
         REFERENCES ticket (ticket_id),
     refund_status_id  integer      NOT NULL
         REFERENCES refund_status (refund_status_id),
+    stripe_refund_id          varchar(255),  -- ID returned by Stripe for this refund
+    stripe_refund_status_raw  varchar(50),   -- raw Stripe status e.g. 'succeeded','failed','pending'
+    policy_code       varchar(50),
     created_at        timestamptz  NOT NULL DEFAULT now(),
     updated_at        timestamptz  NOT NULL DEFAULT now()
 );
+
+CREATE INDEX idx_refund_stripe_refund_id
+    ON refund (stripe_refund_id);
+CREATE INDEX idx_refund_ticket_id
+    ON refund (ticket_id);
+CREATE INDEX idx_refund_refund_status_id
+    ON refund (refund_status_id);
 
 -- ============================
 -- 10. Helpful indexes on foreign keys
@@ -515,8 +530,3 @@ CREATE INDEX idx_ticket_ticket_status_id
 CREATE INDEX idx_ticket_event_seat_id
     ON ticket (event_seat_id);
 
-CREATE INDEX idx_refund_ticket_id
-    ON refund (ticket_id);
-
-CREATE INDEX idx_refund_refund_status_id
-    ON refund (refund_status_id);
