@@ -7,3 +7,6 @@ buildPush.sh
 dbdiagram.io
 README.md
 help.md
+
+#Only dev
+init/*_dev_*.sql

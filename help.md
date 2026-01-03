@@ -21,5 +21,24 @@ stripe trigger payment_intent.succeeded
 stripe payment_intents confirm <PAYMENT_INTENT_ID> --payment-method pm_card_visa
 ```
 
+#Refund completo (recomendado: por PaymentIntent)
+```bash
 
-stripe payment_intents confirm pi_3STXLLDfP4KV3h2x1W4c3BRe --payment-method pm_card_visa
+stripe refunds create --payment-intent=pi_123
+```
+
+
+```bash
+```
+
+
+```bash
+```
+
+
+
+```bash
+```
+
+
+stripe payment_intents confirm pi_3SUHrpDfP4KV3h2x2SV1oBux --payment-method pm_card_visa
